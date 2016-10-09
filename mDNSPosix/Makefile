@@ -48,6 +48,9 @@
 
 #############################################################################
 
+os=$(shell uname -s)
+arch=$(shell uname -m)
+
 LIBVERS = 1
 
 COREDIR = ../mDNSCore
@@ -73,21 +76,21 @@ JAVACFLAGS_OS = -fPIC -shared -ldns_sd
 DEBUG=0
 ifeq ($(DEBUG),1)
 CFLAGS_DEBUG = -g -DMDNS_DEBUGMSGS=2
-OBJDIR = objects/debug
-BUILDDIR = build/debug
+OBJDIR = objects_$(arch)/debug
+BUILDDIR = build_$(arch)/debug
 STRIP = echo
 else
 # We use -Os for two reasons:
 # 1. We want to make small binaries, suitable for putting into hardware devices
 # 2. Some of the code analysis warnings only work when some form of optimization is enabled
 CFLAGS_DEBUG = -Os -DMDNS_DEBUGMSGS=0
-OBJDIR ?= objects/prod
-BUILDDIR ?= build/prod
+OBJDIR ?= objects_$(arch)/prod
+BUILDDIR ?= build_$(arch)/prod
 STRIP = $(ST) -S
 endif
 
 # Configure per-OS peculiarities
-ifeq ($(os),solaris)
+ifeq ($(os),Solaris)
 CFLAGS_DEBUG = -O0 -DMDNS_DEBUGMSGS=0
 CFLAGS_OS = -DNOT_HAVE_DAEMON -DNOT_HAVE_SA_LEN -DNOT_HAVE_SOCKLEN_T -DNOT_HAVE_IF_NAMETOINDEX \
 	 -DLOG_PERROR=0 -D_XPG4_2 -D__EXTENSIONS__ -DHAVE_BROKEN_RECVIF_NAME -DTARGET_OS_SOLARIS
@@ -101,25 +104,25 @@ endif
 else
 
 # any target that contains the string "linux"
-ifeq ($(findstring linux,$(os)),linux)
+ifeq ($(findstring Linux,$(os)),Linux)
 CFLAGS_OS = -D_GNU_SOURCE -DHAVE_IPV6 -DNOT_HAVE_SA_LEN -DUSES_NETLINK -DHAVE_LINUX -DTARGET_OS_LINUX -fno-strict-aliasing
 LD = $(CC) -shared
 FLEXFLAGS_OS = -l
 JAVACFLAGS_OS += -I$(JDK)/include/linux
 
 # uClibc does not support Name Service Switch
-ifneq ($(os),linux-uclibc)
+ifneq ($(os),Linux-uclibc)
 OPTIONALTARG = nss_mdns
 OPTINSTALL   = InstalledNSS
 endif
 else
 
-ifeq ($(os),netbsd)
+ifeq ($(os),NetBSD)
 CFLAGS_OS =
 LDCONFIG = ldconfig
 else
 
-ifeq ($(os),freebsd)
+ifeq ($(os),FreeBSD)
 # If not already defined, set LOCALBASE to /usr/local
 LOCALBASE?=/usr/local
 INSTBASE=$(LOCALBASE)
@@ -136,12 +139,12 @@ JAVACFLAGS_OS += -I$(JDK)/include/freebsd
 LDCONFIG = ldconfig
 else
 
-ifeq ($(os),openbsd)
+ifeq ($(os),OpenBSD)
 CFLAGS_OS = -DHAVE_BROKEN_RECVDSTADDR
 LDCONFIG = ldconfig
 else
 
-ifeq ($(os),x)
+ifeq ($(os),X)
 # We have to define __MAC_OS_X_VERSION_MIN_REQUIRED=__MAC_OS_X_VERSION_10_4 or on Leopard
 # we get build failures: ‘daemon’ is deprecated (declared at /usr/include/stdlib.h:283)
 CFLAGS_OS = -DHAVE_IPV6 -no-cpp-precomp -Werror -Wdeclaration-after-statement \
@@ -156,7 +159,7 @@ JAVACFLAGS_OS = -dynamiclib -I/System/Library/Frameworks/JavaVM.framework/Header
 OPTIONALTARG = dnsextd
 else
 
-$(error ERROR: Must specify target OS on command-line, e.g. "make os=x [target]".\
+$(error ERROR: Must specify target OS on command-line, e.g. "make os=X [target]".\
 Supported operating systems include: x, linux, linux-uclibc, netbsd, freebsd, openbsd, solaris)
 endif
 endif
@@ -218,7 +221,7 @@ CFLAGS = $(CFLAGS_COMMON) $(CFLAGS_OS) $(CFLAGS_DEBUG)
 
 all: setup Daemon libdns_sd Clients SAClient SAResponder SAProxyResponder Identify NetMonitor $(OPTIONALTARG)
 
-install: setup InstalledDaemon InstalledStartup InstalledLib InstalledManPages InstalledClients $(OPTINSTALL)
+install: setup InstalledDaemon InstalledStartup InstalledLib InstalledManPages InstalledClients InstalledSAClients $(OPTINSTALL)
 
 # 'setup' sets up the build directory structure the way we want
 setup:
@@ -261,10 +264,10 @@ $(BUILDDIR)/libdns_sd.$(LDSUFFIX): $(CLIENTLIBOBJS)
 	@$(LD) $(LINKOPTS) -o $@ $+
 	@$(STRIP) $@
 
-Clients: setup libdns_sd ../Clients/build/dns-sd
+Clients: setup libdns_sd ../Clients/build_$(arch)/dns-sd
 	@echo "Clients done"
 
-../Clients/build/dns-sd:
+../Clients/build_$(arch)/dns-sd:
 	@$(MAKE) -C ../Clients
 
 # nss_mdns target builds the Name Service Switch module
@@ -293,12 +296,19 @@ InstalledManPages: $(MANPATH)/man8/mdnsd.8
 InstalledClients: $(INSTBASE)/bin/dns-sd
 	@echo $+ " installed"
 
+InstalledSAClients: $(INSTBASE)/bin/mDNSClient \
+					$(INSTBASE)/bin/mDNSIdentify \
+					$(INSTBASE)/bin/mDNSNetMonitor \
+					$(INSTBASE)/bin/mDNSProxyResponder \
+					$(INSTBASE)/bin/mDNSResponder
+	@echo $+ " installed"
+
 InstalledNSS: $(NSSINSTPATH)/$(NSSLINKNAME) /etc/nss_mdns.conf $(MANPATH)/man5/nss_mdns.conf.5 $(MANPATH)/man8/libnss_mdns.8
 	@echo $+ " installed"
 
 # Note: If daemon already installed, we make sure it's stopped before overwriting it
 $(INSTBASE)/sbin/mdnsd: $(BUILDDIR)/mdnsd
-	@if test -x $@; then $(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME) stop; fi
+	-@if test -x $@; then $(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME) stop; fi
 	$(CP) $< $@
 
 $(INSTBASE)/lib/libdns_sd.$(LDSUFFIX).$(LIBVERS): $(BUILDDIR)/libdns_sd.$(LDSUFFIX)
@@ -343,7 +353,7 @@ $(MANPATH)/man8/mdnsd.8: $(SHAREDDIR)/mDNSResponder.8
 	cp $< $@
 	chmod 444 $@
 
-$(INSTBASE)/bin/dns-sd: ../Clients/build/dns-sd
+$(INSTBASE)/bin/dns-sd: ../Clients/build_$(arch)/dns-sd
 	$(CP) $< $@
 
 $(NSSINSTPATH)/$(NSSLINKNAME): $(NSSINSTPATH)/$(NSSLIBFILE)
@@ -491,6 +501,24 @@ $(OBJDIR)/NetMonitor.c.o:            $(COREDIR)/mDNS.c # Note: NetMonitor.c text
 
 $(BUILDDIR)/dnsextd:                 $(DNSEXTDOBJ) $(OBJDIR)/dnsextd.c.threadsafe.o
 	$(CC) $+ -o $@ $(LINKOPTS) $(LINKOPTS_PTHREAD)
+
+$(INSTBASE)/bin/mDNSClient: $(BUILDDIR)/mDNSClientPosix
+	$(CP) $< $@
+
+$(INSTBASE)/bin/mDNSIdentify: $(BUILDDIR)/mDNSIdentify
+	$(CP) $< $@
+
+$(INSTBASE)/bin/mDNSNetMonitor: $(BUILDDIR)/mDNSNetMonitor
+	$(CP) $< $@
+
+$(INSTBASE)/bin/mDNSProxyResponder: $(BUILDDIR)/mDNSProxyResponderPosix
+	$(CP) $< $@
+
+$(INSTBASE)/bin/mDNSResponder: $(BUILDDIR)/mDNSResponderPosix
+	$(CP) $< $@
+
+$(INSTBASE)/bin/dnsextd: $(BUILDDIR)/dnsextd
+	$(CP) $< $@
 
 #############################################################################
 
