@@ -48,7 +48,7 @@
 
 #############################################################################
 
-os=$(shell uname -s)
+os=$(shell uname -s | tr 'A-Z' 'a-z')
 arch=$(shell uname -m)
 
 LIBVERS = 1

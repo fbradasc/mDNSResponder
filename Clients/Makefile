@@ -30,7 +30,7 @@
 # On OS X the dns_sd library functions are included in libSystem, which is implicitly linked with every executable
 # If /usr/lib/libSystem.dylib exists, then we're on OS X, so we don't need also to link the "dns_sd" shared library
 
-os=$(shell uname -s)
+os=$(shell uname -s | tr 'A-Z' 'a-z')
 arch=$(shell uname -m)
 
 ifneq "$(wildcard /usr/lib/libSystem.dylib)" ""
