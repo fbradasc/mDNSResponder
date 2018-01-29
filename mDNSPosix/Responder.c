@@ -431,7 +431,10 @@ static mStatus RegisterOneService(const char *  richTextName,
     thisServ = (PosixService *) malloc(sizeof(*thisServ));
     if (thisServ == NULL) {
         status = mStatus_NoMemoryErr;
+    } else {
+      memset(thisServ,0,sizeof(*thisServ));
     }
+
     if (status == mStatus_NoError) {
         MakeDomainLabelFromLiteralString(&name,  richTextName);
         MakeDomainNameFromDNSNameString(&type, serviceType);
