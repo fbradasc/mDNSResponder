@@ -90,7 +90,7 @@ STRIP = $(ST) -S
 endif
 
 # Configure per-OS peculiarities
-ifeq ($(os),Solaris)
+ifeq ($(os),solaris)
 CFLAGS_DEBUG = -O0 -DMDNS_DEBUGMSGS=0
 CFLAGS_OS = -DNOT_HAVE_DAEMON -DNOT_HAVE_SA_LEN -DNOT_HAVE_SOCKLEN_T -DNOT_HAVE_IF_NAMETOINDEX \
 	 -DLOG_PERROR=0 -D_XPG4_2 -D__EXTENSIONS__ -DHAVE_BROKEN_RECVIF_NAME -DTARGET_OS_SOLARIS
@@ -104,25 +104,25 @@ endif
 else
 
 # any target that contains the string "linux"
-ifeq ($(findstring Linux,$(os)),Linux)
+ifeq ($(findstring linux,$(os)),linux)
 CFLAGS_OS = -D_GNU_SOURCE -DHAVE_IPV6 -DNOT_HAVE_SA_LEN -DUSES_NETLINK -DHAVE_LINUX -DTARGET_OS_LINUX -fno-strict-aliasing
 LD = $(CC) -shared
 FLEXFLAGS_OS = -l
 JAVACFLAGS_OS += -I$(JDK)/include/linux
 
 # uClibc does not support Name Service Switch
-ifneq ($(os),Linux-uclibc)
+ifneq ($(os),linux-uclibc)
 OPTIONALTARG = nss_mdns
 OPTINSTALL   = InstalledNSS
 endif
 else
 
-ifeq ($(os),NetBSD)
+ifeq ($(os),netbsd)
 CFLAGS_OS =
 LDCONFIG = ldconfig
 else
 
-ifeq ($(os),FreeBSD)
+ifeq ($(os),freebsd)
 # If not already defined, set LOCALBASE to /usr/local
 LOCALBASE?=/usr/local
 INSTBASE=$(LOCALBASE)
@@ -139,16 +139,17 @@ JAVACFLAGS_OS += -I$(JDK)/include/freebsd
 LDCONFIG = ldconfig
 else
 
-ifeq ($(os),OpenBSD)
+ifeq ($(os),openbsd)
 CFLAGS_OS = -DHAVE_BROKEN_RECVDSTADDR
 LDCONFIG = ldconfig
 else
 
-ifeq ($(os),X)
+ifeq ($(os),x)
 # We have to define __MAC_OS_X_VERSION_MIN_REQUIRED=__MAC_OS_X_VERSION_10_4 or on Leopard
 # we get build failures: ‘daemon’ is deprecated (declared at /usr/include/stdlib.h:283)
 CFLAGS_OS = -DHAVE_IPV6 -no-cpp-precomp -Werror -Wdeclaration-after-statement \
 	-D__MAC_OS_X_VERSION_MIN_REQUIRED=__MAC_OS_X_VERSION_10_4 \
+	-DHAVE_STRLCPY=1 \
 	-D__APPLE_USE_RFC_2292 #-Wunreachable-code
 CC = gcc
 LD = $(CC) -dynamiclib
@@ -159,7 +160,7 @@ JAVACFLAGS_OS = -dynamiclib -I/System/Library/Frameworks/JavaVM.framework/Header
 OPTIONALTARG = dnsextd
 else
 
-$(error ERROR: Must specify target OS on command-line, e.g. "make os=X [target]".\
+$(error ERROR: Must specify target OS on command-line, e.g. "make os=x [target]".\
 Supported operating systems include: x, linux, linux-uclibc, netbsd, freebsd, openbsd, solaris)
 endif
 endif
@@ -221,7 +222,7 @@ CFLAGS = $(CFLAGS_COMMON) $(CFLAGS_OS) $(CFLAGS_DEBUG)
 
 all: setup Daemon libdns_sd Clients SAClient SAResponder SAProxyResponder Identify NetMonitor $(OPTIONALTARG)
 
-install: setup InstalledDaemon InstalledStartup InstalledLib InstalledManPages InstalledClients InstalledSAClients $(OPTINSTALL)
+install: setup InstalledStartup InstalledDaemon InstalledLib InstalledManPages InstalledClients $(OPTINSTALL)
 
 # 'setup' sets up the build directory structure the way we want
 setup:

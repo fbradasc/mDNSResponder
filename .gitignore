@@ -1,0 +1,9 @@
+mDNSMacOSX/*.xcodeproj/project.xcworkspace
+mDNSMacOSX/*.xcodeproj/xcuserdata
+.svn
+build*
+objects*
+*~.m
+*~.c
+*~.h
+*~
